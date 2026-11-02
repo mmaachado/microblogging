@@ -1,0 +1,60 @@
+[project]
+name = "backend"
+version = "0.1.0"
+description = "Privacy-first microblogging backend"
+readme = "README.md"
+authors = [
+    { name = "Marcelo Machado", email = "80861021+mmaachado@users.noreply.github.com" }
+]
+requires-python = ">=3.13.16"
+dependencies = [
+    "aiosqlite>=0.22.1",
+    "alembic>=1.20.1",
+    "argon2-cffi>=25.1.0",
+    "email-validator>=2.3.0",
+    "fastapi>=0.162.0",
+    "pydantic-settings>=2.16.2",
+    "sqlalchemy[asyncio]>=2.1.6",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.23,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "black>=26.10.1",
+    "httpx>=0.28.1",
+    "mypy>=2.4.1",
+    "pytest>=9.2.0",
+    "pytest-asyncio>=1.4.1.post1",
+    "ruff>=0.17.3",
+    "taskipy>=1.14.1",
+]
+
+[tool.black]
+line-length = 79
+
+[tool.ruff]
+line-length = 79
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.mypy]
+strict = true
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+
+[tool.taskipy.tasks]
+format = "black src tests && ruff check --fix src tests"
+lint = "ruff check src tests && black --check src tests"
+types = "mypy src"
+test = "pytest -q"
+pre_test = "task lint && task types"
+serve = "uvicorn backend.main:create_app --factory --reload --no-access-log --no-server-header --no-proxy-headers"
