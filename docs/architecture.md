@@ -28,6 +28,16 @@ that if one instance is taken down, anyone can host another.
 | Profile (username, name, bio, avatar, optional birthday/phone) | Shown on your profile. Birthday and phone are never public. |
 | Posts, media, likes, reposts, bookmarks | The service itself. |
 
+### Known limitation: anyone can check whether an e-mail has an account
+
+Sign-up answers "e-mail already registered" when it is. Without e-mail
+confirmation there is no way around this: registering an address and then
+logging in also reveals whether it existed. The instance caps sign-ups
+per minute (`REGISTRATION_RATE_PER_MINUTE`, no IP involved), which slows
+down checking long lists of addresses but not a single one. The sign-up
+form tells people about this. An optional e-mail confirmation flow is
+planned to close it.
+
 Uploaded images are re-encoded and videos are remuxed, so EXIF, GPS and
 other metadata are removed before anything is saved. File names are
 random.
