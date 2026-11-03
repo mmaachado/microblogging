@@ -13,6 +13,11 @@ class Settings(BaseSettings):
     registration_rate_per_minute: int = 30
     password_hash_concurrency: int = 4
     image_processing_concurrency: int = 2
+    video_processing_concurrency: int = 1
+    ffmpeg_path: str = "ffmpeg"
+    ffprobe_path: str = "ffprobe"
+    posts_per_minute: int = 10
+    upload_bytes_per_day: int = 500 * 1024 * 1024
     media_dir: str = "media"
     max_request_bytes: int = 65536
     log_file: str = "logs/backend.log"

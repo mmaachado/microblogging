@@ -1,4 +1,5 @@
 import asyncio
+import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -22,12 +23,18 @@ from backend.auth.service import RegistrationLimiter
 from backend.config import Settings, get_settings
 from backend.db import create_engine
 from backend.logging import configure_logging
+from backend.posts.router import router as posts_router
+from backend.posts.service import MAX_VIDEO_BYTES, PostError, PostQuota
 from backend.users.router import MAX_AVATAR_BYTES
 from backend.users.router import router as users_router
 from backend.users.schemas import PROFILE_ERROR_CODES
 
 AVATAR_PATH = "/api/v1/me/avatar"
 AVATAR_BODY_LIMIT = MAX_AVATAR_BYTES + 64 * 1024
+POSTS_PATH = "/api/v1/posts"
+POSTS_BODY_LIMIT = MAX_VIDEO_BYTES + 256 * 1024
+
+STALE_TMP_SECONDS = 3600
 
 MUTATING = {"POST", "PUT", "PATCH", "DELETE"}
 
@@ -148,6 +155,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.image_limiter = asyncio.Semaphore(
         settings.image_processing_concurrency
     )
+    app.state.video_limiter = asyncio.Semaphore(
+        settings.video_processing_concurrency
+    )
+    app.state.post_quota = PostQuota(
+        settings.posts_per_minute, settings.upload_bytes_per_day
+    )
     app.state.sessionmaker = async_sessionmaker(engine, expire_on_commit=False)
     app.add_middleware(
         OriginCheckMiddleware, allowed_origins=settings.allowed_origins
@@ -156,10 +169,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(
         BodyLimitMiddleware,
         default_limit=settings.max_request_bytes,
-        route_limits={("PUT", AVATAR_PATH): AVATAR_BODY_LIMIT},
+        route_limits={
+            ("PUT", AVATAR_PATH): AVATAR_BODY_LIMIT,
+            ("POST", POSTS_PATH): POSTS_BODY_LIMIT,
+        },
     )
     app.include_router(auth_router)
     app.include_router(users_router)
+    app.include_router(posts_router)
+
+    @app.exception_handler(PostError)
+    async def post_error(_: Request, exc: PostError) -> Response:
+        return JSONResponse({"detail": exc.code}, status_code=exc.status)
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(
@@ -170,7 +191,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 return JSONResponse({"detail": error["type"]}, status_code=422)
         return await request_validation_exception_handler(request, exc)
 
-    Path(settings.media_dir).mkdir(parents=True, exist_ok=True)
+    for subdir in ("tmp", "posts"):
+        (Path(settings.media_dir) / subdir).mkdir(parents=True, exist_ok=True)
+    cutoff = time.time() - STALE_TMP_SECONDS
+    for leftover in (Path(settings.media_dir) / "tmp").iterdir():
+        if leftover.is_file() and leftover.stat().st_mtime < cutoff:
+            leftover.unlink(missing_ok=True)
     app.mount(
         "/media", StaticFiles(directory=settings.media_dir), name="media"
     )

@@ -5,6 +5,10 @@ import { AppShell } from "@/components/layout/app-shell";
 import { LoginPage } from "@/features/auth/login-page";
 import { RegisterPage } from "@/features/auth/register-page";
 import { useMe } from "@/features/auth/use-auth";
+import { Composer } from "@/features/posts/composer";
+import { PostList } from "@/features/posts/post-list";
+import { PostPage } from "@/features/posts/post-page";
+import { useTimeline } from "@/features/posts/use-posts";
 import { ProfilePage } from "@/features/profile/profile-page";
 
 function Loading() {
@@ -36,8 +40,13 @@ function PublicRoute() {
 }
 
 function HomePage() {
-  const { t } = useTranslation();
-  return <p className="text-muted-foreground p-8 text-center">{t("home.empty")}</p>;
+  const timeline = useTimeline();
+  return (
+    <>
+      <Composer />
+      <PostList query={timeline} />
+    </>
+  );
 }
 
 function ComingSoon() {
@@ -58,6 +67,7 @@ export const router = createBrowserRouter([
     children: [
       { path: "/", element: <HomePage /> },
       { path: "/settings", element: <ComingSoon /> },
+      { path: "/post/:id", element: <PostPage /> },
       { path: "/:username", element: <ProfilePage /> },
     ],
   },

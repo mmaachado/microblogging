@@ -27,9 +27,6 @@
     "pt-BR": "Português",
     "en": "English"
   },
-  "home": {
-    "empty": "Nada por aqui ainda"
-  },
   "placeholder": {
     "soon": "Em breve"
   },
@@ -68,9 +65,20 @@
     "username_taken": "Este nome de usuário já está em uso.",
     "username_invalid": "Use de 3 a 15 letras, números ou sublinhados.",
     "username_reserved": "Este nome de usuário é reservado.",
-    "file_too_large": "A imagem deve ter no máximo 5 MB.",
+    "file_too_large": "O arquivo é grande demais (imagens até 5 MB, vídeos até 50 MB).",
     "request_too_large": "A requisição é grande demais.",
-    "invalid_image": "Escolha uma imagem JPEG, PNG, WebP ou GIF válida."
+    "too_many_posts": "Você está publicando rápido demais. Tente de novo em um minuto.",
+    "upload_quota_exceeded": "Você atingiu o limite diário de envio de arquivos.",
+    "invalid_image": "Escolha uma imagem JPEG, PNG, WebP ou GIF válida.",
+    "post_empty": "Escreva algo ou anexe uma mídia.",
+    "post_too_long": "O post deve ter no máximo 120 caracteres.",
+    "mixed_media": "Não é possível misturar imagens e vídeo no mesmo post.",
+    "too_many_files": "Use até 4 imagens ou 1 vídeo.",
+    "invalid_media": "Escolha imagens JPEG, PNG, WebP ou GIF, ou um vídeo MP4, WebM ou MOV válido.",
+    "video_unavailable": "O envio de vídeos não está disponível no momento.",
+    "post_not_found": "Este post não existe.",
+    "not_author": "Só o autor pode alterar este post.",
+    "invalid_cursor": "Não foi possível carregar mais posts."
   },
   "profile": {
     "edit": "Editar perfil",
@@ -87,5 +95,30 @@
     "phone": "Telefone",
     "save": "Salvar",
     "saving": "Salvando..."
+  },
+  "posts": {
+    "placeholder": "O que está acontecendo?",
+    "submit": "Publicar",
+    "submitting": "Publicando...",
+    "attach": "Anexar mídia",
+    "removeMedia": "Remover anexo",
+    "preview": "Pré-visualização do anexo {{n}}",
+    "mediaAlt": "Imagem anexada ao post {{n}}",
+    "edited": "editado",
+    "options": "Opções do post",
+    "edit": "Editar",
+    "delete": "Excluir",
+    "save": "Salvar",
+    "saving": "Salvando...",
+    "cancel": "Cancelar",
+    "deleteTitle": "Excluir post?",
+    "deleteDescription": "Esta ação não pode ser desfeita. As mídias do post também serão excluídas.",
+    "deleting": "Excluindo...",
+    "empty": "Nenhum post ainda",
+    "loadMore": "Carregar mais",
+    "loadingMore": "Carregando...",
+    "notFound": "Este post não existe",
+    "loading": "Carregando posts...",
+    "mediaVideo": "Vídeo do post"
   }
 }

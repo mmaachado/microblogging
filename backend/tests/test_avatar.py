@@ -11,8 +11,8 @@ from PIL import Image
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.config import Settings
+from backend.media.storage import delete_media
 from backend.users import service
-from backend.users.avatar import delete_media
 
 
 def jpeg_with_exif() -> bytes:

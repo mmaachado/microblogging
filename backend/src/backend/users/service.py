@@ -6,11 +6,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.auth.models import User
-from backend.users.avatar import (
-    delete_media,
-    process_avatar,
-    save_avatar,
-)
+from backend.media.storage import delete_media, save_bytes
+from backend.users.avatar import process_avatar
 from backend.users.schemas import ProfileUpdateIn
 
 logger = logging.getLogger(__name__)
@@ -70,7 +67,9 @@ async def set_avatar(
     async with limiter:
         processed = await asyncio.to_thread(process_avatar, data)
     old = user.avatar_path
-    new = await asyncio.to_thread(save_avatar, media_dir, processed)
+    new = await asyncio.to_thread(
+        save_bytes, media_dir, "avatars", processed, "webp"
+    )
     user.avatar_path = new
     try:
         await db.commit()

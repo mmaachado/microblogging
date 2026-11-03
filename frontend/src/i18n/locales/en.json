@@ -27,9 +27,6 @@
     "pt-BR": "Português",
     "en": "English"
   },
-  "home": {
-    "empty": "Nothing here yet"
-  },
   "placeholder": {
     "soon": "Coming soon"
   },
@@ -68,9 +65,20 @@
     "username_taken": "This username is already taken.",
     "username_invalid": "Use 3 to 15 letters, numbers or underscores.",
     "username_reserved": "This username is reserved.",
-    "file_too_large": "The image must be 5 MB or smaller.",
+    "file_too_large": "The file is too large (images up to 5 MB, videos up to 50 MB).",
     "request_too_large": "The request is too large.",
-    "invalid_image": "Choose a valid JPEG, PNG, WebP or GIF image."
+    "too_many_posts": "You're posting too fast. Try again in a minute.",
+    "upload_quota_exceeded": "You've reached the daily upload limit.",
+    "invalid_image": "Choose a valid JPEG, PNG, WebP or GIF image.",
+    "post_empty": "Write something or attach media.",
+    "post_too_long": "A post can have at most 120 characters.",
+    "mixed_media": "You can't mix images and video in the same post.",
+    "too_many_files": "Use up to 4 images or 1 video.",
+    "invalid_media": "Choose valid JPEG, PNG, WebP or GIF images, or an MP4, WebM or MOV video.",
+    "video_unavailable": "Video uploads are not available right now.",
+    "post_not_found": "This post doesn't exist.",
+    "not_author": "Only the author can change this post.",
+    "invalid_cursor": "Could not load more posts."
   },
   "profile": {
     "edit": "Edit profile",
@@ -87,5 +95,30 @@
     "phone": "Phone",
     "save": "Save",
     "saving": "Saving..."
+  },
+  "posts": {
+    "placeholder": "What's happening?",
+    "submit": "Post",
+    "submitting": "Posting...",
+    "attach": "Attach media",
+    "removeMedia": "Remove attachment",
+    "preview": "Attachment preview {{n}}",
+    "mediaAlt": "Image attached to post {{n}}",
+    "edited": "edited",
+    "options": "Post options",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "saving": "Saving...",
+    "cancel": "Cancel",
+    "deleteTitle": "Delete post?",
+    "deleteDescription": "This cannot be undone. The post's media will be deleted too.",
+    "deleting": "Deleting...",
+    "empty": "No posts yet",
+    "loadMore": "Load more",
+    "loadingMore": "Loading...",
+    "notFound": "This post doesn't exist",
+    "loading": "Loading posts...",
+    "mediaVideo": "Post video"
   }
 }

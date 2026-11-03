@@ -1,0 +1,2 @@
+class InvalidMedia(Exception):
+    pass

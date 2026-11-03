@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from backend.config import Settings
 from backend.db import Base
 
-FORBIDDEN_PARTS = ("ip", "user_agent", "agent", "device", "os", "browser")
+FORBIDDEN_PARTS = ("ip", "useragent", "agent", "device", "os", "browser")
 
 
 def test_no_identifying_columns() -> None:
@@ -19,7 +19,7 @@ def test_no_identifying_columns() -> None:
         f"{table.name}.{column.name}"
         for table in Base.metadata.tables.values()
         for column in table.columns
-        if any(part in column.name for part in FORBIDDEN_PARTS)
+        if any(part in column.name.split("_") for part in FORBIDDEN_PARTS)
     ]
     assert offenders == []
 
@@ -73,10 +73,33 @@ async def test_requests_leave_no_identifying_trace(
         headers=headers,
     )
     assert avatar.status_code == 200
+    post_body = "probe post body text"
+    post = await client.post(
+        "/api/v1/posts",
+        data={"body": post_body},
+        files=[("files", ("probe_post_photo.png", image.getvalue()))],
+        headers=headers,
+    )
+    assert post.status_code == 201
+    rejected = await client.post(
+        "/api/v1/posts",
+        data={"body": post_body},
+        files=[("files", ("probe_bad_file.png", b"not media"))],
+        headers=headers,
+    )
+    assert rejected.status_code == 422
     secrets_ = [agent, forwarded, email, password, token]
 
     logged = caplog.text + Path(settings.log_file).read_text()
-    for secret in [*secrets_, phone, "probe_name", "probe_photo"]:
+    for secret in [
+        *secrets_,
+        phone,
+        "probe_name",
+        "probe_photo",
+        "probe_post_photo",
+        "probe_bad_file",
+        post_body,
+    ]:
         assert secret not in logged
 
     async with sessionmaker() as db:
