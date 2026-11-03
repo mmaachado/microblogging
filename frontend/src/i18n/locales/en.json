@@ -6,7 +6,8 @@
     "email": "E-mail",
     "password": "Password",
     "loading": "Loading...",
-    "retry": "Try again"
+    "retry": "Try again",
+    "close": "Close"
   },
   "nav": {
     "home": "Home",
@@ -62,6 +63,29 @@
     "validation_error": "Invalid data. Check the fields.",
     "network_error": "Could not reach the server.",
     "unknown_error": "Something went wrong. Please try again.",
-    "loadFailed": "Could not load your session."
+    "loadFailed": "Could not load your session.",
+    "user_not_found": "This account doesn't exist.",
+    "username_taken": "This username is already taken.",
+    "username_invalid": "Use 3 to 15 letters, numbers or underscores.",
+    "username_reserved": "This username is reserved.",
+    "file_too_large": "The image must be 5 MB or smaller.",
+    "request_too_large": "The request is too large.",
+    "invalid_image": "Choose a valid JPEG, PNG, WebP or GIF image."
+  },
+  "profile": {
+    "edit": "Edit profile",
+    "editDescription": "Change your public profile and private details.",
+    "notFound": "This account doesn't exist",
+    "changePhoto": "Change photo",
+    "removePhoto": "Remove photo",
+    "displayName": "Display name",
+    "username": "Username",
+    "bio": "Bio",
+    "private": "Private information",
+    "privateHelp": "Only you can see this",
+    "birthday": "Date of birth",
+    "phone": "Phone",
+    "save": "Save",
+    "saving": "Saving..."
   }
 }

@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useLogout } from "@/features/auth/use-auth";
+import { useLogout, type Me } from "@/features/auth/use-auth";
 import { LANGUAGES, setLanguage } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { useTheme, type Theme } from "@/providers/theme-provider";
@@ -72,7 +72,7 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
     isActive && "font-bold",
   );
 
-export function AppShell() {
+export function AppShell({ me }: { me: Me }) {
   const { t } = useTranslation();
   const logout = useLogout();
 
@@ -91,7 +91,7 @@ export function AppShell() {
               <Home className="size-5" />
               {t("nav.home")}
             </NavLink>
-            <NavLink to="/profile" className={linkClass}>
+            <NavLink to={`/${me.username}`} className={linkClass}>
               <User className="size-5" />
               {t("nav.profile")}
             </NavLink>
