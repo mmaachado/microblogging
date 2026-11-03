@@ -8,6 +8,13 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Profiles at `/<username>`. People can edit their display name,
+  `@username` (some names are reserved) and bio, and set a private
+  birthday and phone. Public profiles show only username, name, bio and
+  photo.
+- Profile photos are re-encoded to 400×400 WebP, which drops EXIF, GPS,
+  ICC and XMP metadata. Oversized and decompression-bomb images are
+  rejected, and `/media` responses send `nosniff` and a restrictive CSP.
 - Backend foundation (FastAPI, SQLAlchemy, Alembic): sign-up with e-mail
   and password, login, logout and `/api/v1/auth/me`. Sessions are opaque
   cookies stored only as hashes. Logs carry events, never IPs,
@@ -21,3 +28,10 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Architecture overview (`docs/architecture.md`) and Tor hosting guide
   (`docs/tor.md`).
 - Pull request template.
+
+### Security
+
+- Every request body is capped (`MAX_REQUEST_BYTES`, 64 KiB by default;
+  5 MiB for profile photos), and the cap is checked before the body is
+  read. Before this, any endpoint, including login, read an unbounded
+  body into memory.
