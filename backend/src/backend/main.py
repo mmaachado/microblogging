@@ -1,22 +1,33 @@
 import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import async_sessionmaker
+from starlette.datastructures import Headers, MutableHeaders
 from starlette.middleware.base import (
     BaseHTTPMiddleware,
     RequestResponseEndpoint,
 )
 from starlette.responses import Response
-from starlette.types import ASGIApp
+from starlette.staticfiles import StaticFiles
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from backend.auth.router import router as auth_router
 from backend.auth.service import RegistrationLimiter
 from backend.config import Settings, get_settings
 from backend.db import create_engine
 from backend.logging import configure_logging
+from backend.users.router import MAX_AVATAR_BYTES
+from backend.users.router import router as users_router
+from backend.users.schemas import PROFILE_ERROR_CODES
+
+AVATAR_PATH = "/api/v1/me/avatar"
+AVATAR_BODY_LIMIT = MAX_AVATAR_BYTES + 64 * 1024
 
 MUTATING = {"POST", "PUT", "PATCH", "DELETE"}
 
@@ -41,6 +52,80 @@ class OriginCheckMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
+class MediaHeadersMiddleware:
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(
+        self, scope: Scope, receive: Receive, send: Send
+    ) -> None:
+        if scope["type"] != "http" or not scope["path"].startswith("/media"):
+            await self.app(scope, receive, send)
+            return
+
+        async def send_with_headers(message: Message) -> None:
+            if message["type"] == "http.response.start":
+                headers = MutableHeaders(scope=message)
+                headers["X-Content-Type-Options"] = "nosniff"
+                headers["Content-Security-Policy"] = "default-src 'none'"
+            await send(message)
+
+        await self.app(scope, receive, send_with_headers)
+
+
+class BodyLimitMiddleware:
+    def __init__(
+        self,
+        app: ASGIApp,
+        default_limit: int,
+        route_limits: dict[tuple[str, str], int],
+    ) -> None:
+        self.app = app
+        self.default_limit = default_limit
+        self.route_limits = route_limits
+
+    async def __call__(
+        self, scope: Scope, receive: Receive, send: Send
+    ) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        route = (scope["method"], scope["path"])
+        limit = self.route_limits.get(route, self.default_limit)
+        detail = (
+            "file_too_large"
+            if route in self.route_limits
+            else "request_too_large"
+        )
+        rejection = JSONResponse({"detail": detail}, status_code=413)
+        declared = Headers(scope=scope).get("content-length", "")
+        if declared.isdigit() and int(declared) > limit:
+            await rejection(scope, receive, send)
+            return
+        received = 0
+        exceeded = False
+
+        async def counting_receive() -> Message:
+            nonlocal received, exceeded
+            if exceeded:
+                return {"type": "http.disconnect"}
+            message = await receive()
+            if message["type"] == "http.request":
+                received += len(message.get("body", b""))
+                if received > limit:
+                    exceeded = True
+                    return {"type": "http.disconnect"}
+            return message
+
+        async def guarded_send(message: Message) -> None:
+            if not exceeded:
+                await send(message)
+
+        await self.app(scope, counting_receive, guarded_send)
+        if exceeded:
+            await rejection(scope, receive, send)
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
     configure_logging(settings)
@@ -60,11 +145,35 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.hash_limiter = asyncio.Semaphore(
         settings.password_hash_concurrency
     )
+    app.state.image_limiter = asyncio.Semaphore(
+        settings.image_processing_concurrency
+    )
     app.state.sessionmaker = async_sessionmaker(engine, expire_on_commit=False)
     app.add_middleware(
         OriginCheckMiddleware, allowed_origins=settings.allowed_origins
     )
+    app.add_middleware(MediaHeadersMiddleware)
+    app.add_middleware(
+        BodyLimitMiddleware,
+        default_limit=settings.max_request_bytes,
+        route_limits={("PUT", AVATAR_PATH): AVATAR_BODY_LIMIT},
+    )
     app.include_router(auth_router)
+    app.include_router(users_router)
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error(
+        request: Request, exc: RequestValidationError
+    ) -> Response:
+        for error in exc.errors():
+            if error["type"] in PROFILE_ERROR_CODES:
+                return JSONResponse({"detail": error["type"]}, status_code=422)
+        return await request_validation_exception_handler(request, exc)
+
+    Path(settings.media_dir).mkdir(parents=True, exist_ok=True)
+    app.mount(
+        "/media", StaticFiles(directory=settings.media_dir), name="media"
+    )
 
     @app.get("/api/v1/health")
     async def health() -> dict[str, str]:

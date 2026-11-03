@@ -6,7 +6,8 @@
     "email": "E-mail",
     "password": "Senha",
     "loading": "Carregando...",
-    "retry": "Tentar novamente"
+    "retry": "Tentar novamente",
+    "close": "Fechar"
   },
   "nav": {
     "home": "Início",
@@ -62,6 +63,29 @@
     "validation_error": "Dados inválidos. Verifique os campos.",
     "network_error": "Não foi possível conectar ao servidor.",
     "unknown_error": "Algo deu errado. Tente novamente.",
-    "loadFailed": "Não foi possível carregar sua sessão."
+    "loadFailed": "Não foi possível carregar sua sessão.",
+    "user_not_found": "Esta conta não existe.",
+    "username_taken": "Este nome de usuário já está em uso.",
+    "username_invalid": "Use de 3 a 15 letras, números ou sublinhados.",
+    "username_reserved": "Este nome de usuário é reservado.",
+    "file_too_large": "A imagem deve ter no máximo 5 MB.",
+    "request_too_large": "A requisição é grande demais.",
+    "invalid_image": "Escolha uma imagem JPEG, PNG, WebP ou GIF válida."
+  },
+  "profile": {
+    "edit": "Editar perfil",
+    "editDescription": "Altere seu perfil público e seus dados privados.",
+    "notFound": "Esta conta não existe",
+    "changePhoto": "Alterar foto",
+    "removePhoto": "Remover foto",
+    "displayName": "Nome de exibição",
+    "username": "Nome de usuário",
+    "bio": "Bio",
+    "private": "Informações privadas",
+    "privateHelp": "Só você vê isso",
+    "birthday": "Data de nascimento",
+    "phone": "Telefone",
+    "save": "Salvar",
+    "saving": "Salvando..."
   }
 }

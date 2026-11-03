@@ -17,7 +17,7 @@ from backend.logging import configure_logging
 
 def test_throttle_sweeps_stale_keys(monkeypatch: pytest.MonkeyPatch) -> None:
     now = [1000.0]
-    monkeypatch.setattr(service.time, "monotonic", lambda: now[0])
+    monkeypatch.setattr(time, "monotonic", lambda: now[0])
     throttle = service.LoginThrottle(max_keys=1)
     throttle.record_failure("old@example.com")
     now[0] += 901
@@ -96,7 +96,7 @@ def test_registration_limiter_slides(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     now = [1000.0]
-    monkeypatch.setattr(service.time, "monotonic", lambda: now[0])
+    monkeypatch.setattr(time, "monotonic", lambda: now[0])
     limiter = service.RegistrationLimiter(2)
     limiter.acquire()
     limiter.acquire()

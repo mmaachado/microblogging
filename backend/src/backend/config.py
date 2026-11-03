@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     session_ttl_days: int = 30
     registration_rate_per_minute: int = 30
     password_hash_concurrency: int = 4
+    image_processing_concurrency: int = 2
+    media_dir: str = "media"
+    max_request_bytes: int = 65536
     log_file: str = "logs/backend.log"
     log_level: str = "INFO"
     cache_url: str | None = None

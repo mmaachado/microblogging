@@ -14,6 +14,7 @@ export async function apiFetch<T>(
   init: Omit<RequestInit, "body"> & { body?: unknown } = {},
 ): Promise<T> {
   const { body, headers, ...rest } = init;
+  const isForm = body instanceof FormData;
   let response: Response;
   try {
     response = await fetch(path, {
@@ -21,10 +22,15 @@ export async function apiFetch<T>(
       ...rest,
       headers: {
         Accept: "application/json",
-        ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+        ...(body === undefined || isForm
+          ? {}
+          : { "Content-Type": "application/json" }),
         ...headers,
       },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body:
+        body === undefined || isForm
+          ? (body as BodyInit)
+          : JSON.stringify(body),
     });
   } catch {
     throw new ApiError(0, "network_error");
@@ -33,7 +39,8 @@ export async function apiFetch<T>(
     let detail = "unknown_error";
     try {
       const data = await response.json();
-      detail = typeof data.detail === "string" ? data.detail : "validation_error";
+      detail =
+        typeof data.detail === "string" ? data.detail : "validation_error";
     } catch {
       // body is not JSON; keep the generic code
     }

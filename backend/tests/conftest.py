@@ -18,6 +18,7 @@ def settings(tmp_path: Path) -> Settings:
     return Settings(
         database_url=f"sqlite+aiosqlite:///{tmp_path / 'test.sqlite3'}",
         log_file=str(tmp_path / "logs" / "backend.log"),
+        media_dir=str(tmp_path / "media"),
         cookie_secure=False,
         registration_rate_per_minute=1000,
         _env_file=None,
@@ -48,3 +49,17 @@ async def client(app: FastAPI) -> AsyncIterator[httpx.AsyncClient]:
         transport=transport, base_url="http://testserver"
     ) as client:
         yield client
+
+
+@pytest.fixture
+async def authed(client: httpx.AsyncClient) -> httpx.AsyncClient:
+    response = await client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "person@example.com",
+            "password": "a long enough password",
+            "acknowledged_email_notice": True,
+        },
+    )
+    assert response.status_code == 201
+    return client

@@ -5,6 +5,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { LoginPage } from "@/features/auth/login-page";
 import { RegisterPage } from "@/features/auth/register-page";
 import { useMe } from "@/features/auth/use-auth";
+import { ProfilePage } from "@/features/profile/profile-page";
 
 function Loading() {
   const { t } = useTranslation();
@@ -24,7 +25,7 @@ export function ProtectedRoute() {
     );
   }
   if (!data) return <Navigate to="/login" replace />;
-  return <AppShell />;
+  return <AppShell me={data} />;
 }
 
 function PublicRoute() {
@@ -56,8 +57,8 @@ export const router = createBrowserRouter([
     element: <ProtectedRoute />,
     children: [
       { path: "/", element: <HomePage /> },
-      { path: "/profile", element: <ComingSoon /> },
       { path: "/settings", element: <ComingSoon /> },
+      { path: "/:username", element: <ProfilePage /> },
     ],
   },
   { path: "*", element: <Navigate to="/" replace /> },
