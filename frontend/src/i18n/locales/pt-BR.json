@@ -1,0 +1,67 @@
+{
+  "app": {
+    "name": "Microblogging"
+  },
+  "common": {
+    "email": "E-mail",
+    "password": "Senha",
+    "loading": "Carregando...",
+    "retry": "Tentar novamente"
+  },
+  "nav": {
+    "home": "Início",
+    "profile": "Perfil",
+    "settings": "Configurações",
+    "logout": "Sair",
+    "primary": "Navegação principal"
+  },
+  "theme": {
+    "label": "Tema",
+    "light": "Claro",
+    "dark": "Escuro",
+    "system": "Sistema"
+  },
+  "language": {
+    "label": "Idioma",
+    "pt-BR": "Português",
+    "en": "English"
+  },
+  "home": {
+    "empty": "Nada por aqui ainda"
+  },
+  "placeholder": {
+    "soon": "Em breve"
+  },
+  "login": {
+    "title": "Entrar",
+    "submit": "Entrar",
+    "submitting": "Entrando...",
+    "noAccount": "Não tem conta?",
+    "register": "Criar conta"
+  },
+  "register": {
+    "title": "Criar conta",
+    "submit": "Criar conta",
+    "submitting": "Criando...",
+    "confirmPassword": "Confirmar senha",
+    "passwordHint": "Mínimo de 12 caracteres.",
+    "passwordMismatch": "As senhas não coincidem.",
+    "noticeTitle": "Aviso sobre o e-mail",
+    "notice": "Seu e-mail fica guardado como você digitou, e qualquer pessoa consegue descobrir se um e-mail já tem conta nesta instância. Se a sua identidade estiver em risco, use um e-mail anônimo (ex.: Proton Mail) que não esteja ligado a você.",
+    "acknowledge": "Li e entendi",
+    "hasAccount": "Já tem conta?",
+    "login": "Entrar"
+  },
+  "errors": {
+    "invalid_credentials": "E-mail ou senha inválidos.",
+    "too_many_attempts": "Muitas tentativas. Tente novamente mais tarde.",
+    "email_taken": "Este e-mail já está em uso.",
+    "notice_not_acknowledged": "Você precisa confirmar o aviso sobre o e-mail.",
+    "not_authenticated": "Você precisa entrar para continuar.",
+    "origin_not_allowed": "Origem da requisição não permitida.",
+    "validation_error": "Dados inválidos. Verifique os campos.",
+    "network_error": "Não foi possível conectar ao servidor.",
+    "unknown_error": "Algo deu errado. Tente novamente.",
+    "loadFailed": "Não foi possível carregar sua sessão."
+  }
+}

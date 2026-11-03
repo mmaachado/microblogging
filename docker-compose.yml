@@ -1,0 +1,11 @@
+services:
+  valkey:
+    image: valkey/valkey:8
+    profiles: ["future"]
+    ports:
+      - "127.0.0.1:6379:6379"
+  nats:
+    image: nats:2
+    profiles: ["future"]
+    ports:
+      - "127.0.0.1:4222:4222"

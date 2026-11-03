@@ -1,0 +1,67 @@
+{
+  "app": {
+    "name": "Microblogging"
+  },
+  "common": {
+    "email": "E-mail",
+    "password": "Password",
+    "loading": "Loading...",
+    "retry": "Try again"
+  },
+  "nav": {
+    "home": "Home",
+    "profile": "Profile",
+    "settings": "Settings",
+    "logout": "Log out",
+    "primary": "Main navigation"
+  },
+  "theme": {
+    "label": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "language": {
+    "label": "Language",
+    "pt-BR": "Português",
+    "en": "English"
+  },
+  "home": {
+    "empty": "Nothing here yet"
+  },
+  "placeholder": {
+    "soon": "Coming soon"
+  },
+  "login": {
+    "title": "Log in",
+    "submit": "Log in",
+    "submitting": "Logging in...",
+    "noAccount": "No account yet?",
+    "register": "Create account"
+  },
+  "register": {
+    "title": "Create account",
+    "submit": "Create account",
+    "submitting": "Creating...",
+    "confirmPassword": "Confirm password",
+    "passwordHint": "At least 12 characters.",
+    "passwordMismatch": "Passwords do not match.",
+    "noticeTitle": "E-mail notice",
+    "notice": "Your e-mail is stored as typed, and anyone can find out whether an e-mail already has an account on this instance. If your identity is at risk, use an anonymous mailbox (e.g. Proton Mail) that is not linked to you.",
+    "acknowledge": "I read and understand",
+    "hasAccount": "Already have an account?",
+    "login": "Log in"
+  },
+  "errors": {
+    "invalid_credentials": "Invalid e-mail or password.",
+    "too_many_attempts": "Too many attempts. Please try again later.",
+    "email_taken": "This e-mail is already in use.",
+    "notice_not_acknowledged": "You must acknowledge the e-mail notice.",
+    "not_authenticated": "You need to log in to continue.",
+    "origin_not_allowed": "Request origin not allowed.",
+    "validation_error": "Invalid data. Check the fields.",
+    "network_error": "Could not reach the server.",
+    "unknown_error": "Something went wrong. Please try again.",
+    "loadFailed": "Could not load your session."
+  }
+}
