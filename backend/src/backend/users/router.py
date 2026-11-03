@@ -16,8 +16,8 @@ from backend.auth.models import User
 from backend.auth.schemas import MeOut
 from backend.config import Settings
 from backend.db import get_db
+from backend.media.images import InvalidImage
 from backend.users import service
-from backend.users.avatar import InvalidImage
 from backend.users.schemas import ProfileUpdateIn, PublicProfileOut
 
 MAX_AVATAR_BYTES = 5 * 1024 * 1024
