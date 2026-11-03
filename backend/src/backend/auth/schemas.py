@@ -3,6 +3,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
+from backend.users.schemas import AvatarMixin
+
 
 class RegisterIn(BaseModel):
     email: EmailStr
@@ -15,7 +17,7 @@ class LoginIn(BaseModel):
     password: str = Field(max_length=128)
 
 
-class MeOut(BaseModel):
+class MeOut(AvatarMixin):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -23,7 +25,6 @@ class MeOut(BaseModel):
     username: str
     display_name: str
     bio: str
-    avatar_url: str | None = None
     birthday: date | None
     phone: str | None
     created_at: datetime
