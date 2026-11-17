@@ -11,11 +11,14 @@ from pathlib import Path
 from uuid import UUID
 
 from fastapi import UploadFile
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, func, literal, or_, select, union_all
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Mapped
 
 from backend.auth.models import User
 from backend.config import Settings
+from backend.interactions.models import Bookmark, Like, Repost
 from backend.media import InvalidMedia
 from backend.media.images import open_image, to_post_image
 from backend.media.storage import delete_media, save_bytes
@@ -26,6 +29,13 @@ from backend.media.video import (
     strip_metadata,
 )
 from backend.posts.models import Media, Post, utcnow
+from backend.posts.schemas import (
+    FeedEntry,
+    FeedPage,
+    PostOut,
+    QuotedPostOut,
+)
+from backend.users.schemas import PublicProfileOut
 
 logger = logging.getLogger(__name__)
 
@@ -121,11 +131,11 @@ class Processed:
     mime: str
 
 
-def normalize_body(body: str, has_media: bool) -> str:
+def normalize_body(body: str, allow_empty: bool) -> str:
     text = body.replace("\r\n", "\n").strip()
     if len(text) > MAX_BODY:
         raise PostError(422, "post_too_long")
-    if not text and not has_media:
+    if not text and not allow_empty:
         raise PostError(422, "post_empty")
     return text
 
@@ -228,8 +238,11 @@ async def create_post(
     uploads: list[Path],
     settings: Settings,
     limiters: Limiters,
+    quote_of_id: str | None = None,
 ) -> Post:
-    text = normalize_body(body, bool(uploads))
+    text = normalize_body(body, bool(uploads) or quote_of_id is not None)
+    quoted = None if quote_of_id is None else await get_post(db, quote_of_id)
+    quoted_id = None if quoted is None else quoted.id
     if len(uploads) > MAX_IMAGES:
         raise PostError(422, "too_many_files")
     sniffed = [await asyncio.to_thread(_sniff, u) for u in uploads]
@@ -251,6 +264,8 @@ async def create_post(
         post = Post(
             author=author,
             body=text,
+            quote_of_id=quoted_id,
+            is_quote=quoted is not None,
             media=[
                 Media(kind=s.kind, path=s.path, mime=s.mime, position=index)
                 for index, s in enumerate(saved)
@@ -258,11 +273,17 @@ async def create_post(
         )
         db.add(post)
         await db.commit()
-    except BaseException:
+    except BaseException as error:
         try:
             await db.rollback()
         finally:
             await asyncio.to_thread(_discard, settings.media_dir, saved)
+        if (
+            isinstance(error, IntegrityError)
+            and quoted_id is not None
+            and not await post_exists(db, quoted_id)
+        ):
+            raise PostError(404, "post_not_found") from None
         raise
     logger.info("post created")
     return post
@@ -279,13 +300,18 @@ async def get_post(db: AsyncSession, post_id: str) -> Post:
     return post
 
 
+async def post_exists(db: AsyncSession, key: UUID) -> bool:
+    found = await db.scalar(select(Post.id).where(Post.id == key))
+    return found is not None
+
+
 async def edit_post(
     db: AsyncSession, user: User, post_id: str, body: str
 ) -> Post:
     post = await get_post(db, post_id)
     if post.author_id != user.id:
         raise PostError(403, "not_author")
-    post.body = normalize_body(body, bool(post.media))
+    post.body = normalize_body(body, bool(post.media) or post.is_quote)
     post.edited_at = utcnow()
     await db.commit()
     logger.info("post edited")
@@ -309,32 +335,146 @@ async def delete_post(
     logger.info("post deleted")
 
 
-def encode_cursor(post: Post) -> str:
-    raw = f"{post.created_at.isoformat()}|{post.id}"
+def encode_cursor(*parts: object) -> str:
+    raw = "|".join(
+        p.isoformat() if isinstance(p, datetime) else str(p) for p in parts
+    )
     return base64.urlsafe_b64encode(raw.encode()).decode()
+
+
+def _decode_stamp(stamp: str) -> datetime:
+    at = datetime.fromisoformat(stamp)
+    if at.tzinfo is None:
+        raise ValueError("naive cursor")
+    return at.astimezone(UTC)
 
 
 def decode_cursor(cursor: str) -> tuple[datetime, UUID]:
     try:
         raw = base64.urlsafe_b64decode(cursor.encode()).decode()
         stamp, key = raw.split("|")
-        created_at = datetime.fromisoformat(stamp)
-        if created_at.tzinfo is None:
-            raise ValueError("naive cursor")
-        return created_at.astimezone(UTC), UUID(key)
+        return _decode_stamp(stamp), UUID(key)
     except (ValueError, OverflowError):
         raise PostError(422, "invalid_cursor") from None
 
 
-async def _page(
+def _decode_feed_cursor(cursor: str) -> tuple[datetime, str, UUID]:
+    try:
+        raw = base64.urlsafe_b64decode(cursor.encode()).decode()
+        stamp, kind, key = raw.split("|")
+        if kind not in ("p", "r"):
+            raise ValueError("kind")
+        return _decode_stamp(stamp), kind, UUID(key)
+    except (ValueError, OverflowError):
+        raise PostError(422, "invalid_cursor") from None
+
+
+async def posts_by_id(
+    db: AsyncSession, ids: Sequence[UUID]
+) -> dict[UUID, Post]:
+    if not ids:
+        return {}
+    rows = await db.scalars(select(Post).where(Post.id.in_(ids)))
+    return {p.id: p for p in rows}
+
+
+async def _counts(
     db: AsyncSession,
-    cursor: str | None,
-    limit: int,
-    author: User | None = None,
-) -> tuple[list[Post], str | None]:
+    column: Mapped[UUID] | Mapped[UUID | None],
+    ids: set[UUID],
+) -> dict[UUID, int]:
+    rows = await db.execute(
+        select(column, func.count()).where(column.in_(ids)).group_by(column)
+    )
+    return {k: c for k, c in rows.all() if k is not None}
+
+
+async def _viewer_ids(
+    db: AsyncSession,
+    model: type[Like | Repost | Bookmark],
+    viewer: User,
+    ids: set[UUID],
+) -> set[UUID]:
+    rows = await db.scalars(
+        select(model.post_id).where(
+            model.user_id == viewer.id, model.post_id.in_(ids)
+        )
+    )
+    return set(rows)
+
+
+async def serialize(
+    db: AsyncSession, posts: Sequence[Post], viewer: User | None
+) -> list[PostOut]:
+    if not posts:
+        return []
+    ids = {p.id for p in posts}
+    quoted = await posts_by_id(
+        db, [p.quote_of_id for p in posts if p.quote_of_id is not None]
+    )
+    likes = await _counts(db, Like.post_id, ids)
+    reposts = await _counts(db, Repost.post_id, ids)
+    quotes = await _counts(db, Post.quote_of_id, ids)
+    liked = reposted = bookmarked = set[UUID]()
+    if viewer is not None:
+        liked = await _viewer_ids(db, Like, viewer, ids)
+        reposted = await _viewer_ids(db, Repost, viewer, ids)
+        bookmarked = await _viewer_ids(db, Bookmark, viewer, ids)
+    out: list[PostOut] = []
+    for p in posts:
+        embed = quoted.get(p.quote_of_id) if p.quote_of_id else None
+        out.append(
+            PostOut.model_validate(
+                {
+                    "id": p.id,
+                    "author": p.author,
+                    "body": p.body,
+                    "media": p.media,
+                    "created_at": p.created_at,
+                    "edited_at": p.edited_at,
+                    "like_count": likes.get(p.id, 0),
+                    "repost_count": reposts.get(p.id, 0),
+                    "quote_count": quotes.get(p.id, 0),
+                    "liked": p.id in liked,
+                    "reposted": p.id in reposted,
+                    "bookmarked": p.id in bookmarked,
+                    "quote": (
+                        None
+                        if embed is None
+                        else QuotedPostOut.model_validate(embed)
+                    ),
+                    "quote_unavailable": p.is_quote and embed is None,
+                }
+            )
+        )
+    return out
+
+
+async def feed_page(
+    db: AsyncSession,
+    entries: Sequence[tuple[Post, User | None]],
+    next_cursor: str | None,
+    viewer: User | None,
+) -> FeedPage:
+    outs = await serialize(db, [post for post, _ in entries], viewer)
+    return FeedPage(
+        items=[
+            FeedEntry(
+                post=out,
+                reposted_by=(
+                    None if by is None else PublicProfileOut.model_validate(by)
+                ),
+            )
+            for out, (_, by) in zip(outs, entries, strict=True)
+        ],
+        next_cursor=next_cursor,
+    )
+
+
+async def timeline(
+    db: AsyncSession, viewer: User | None, cursor: str | None, limit: int
+) -> FeedPage:
     query = select(Post).order_by(Post.created_at.desc(), Post.id.desc())
-    if author is not None:
-        query = query.where(Post.author_id == author.id)
     if cursor is not None:
         created_at, key = decode_cursor(cursor)
         query = query.where(
@@ -345,17 +485,58 @@ async def _page(
         )
     rows = list((await db.scalars(query.limit(limit + 1))).all())
     items = rows[:limit]
-    next_cursor = encode_cursor(items[-1]) if len(rows) > limit else None
-    return items, next_cursor
+    next_cursor = (
+        encode_cursor(items[-1].created_at, items[-1].id)
+        if len(rows) > limit
+        else None
+    )
+    return await feed_page(db, [(p, None) for p in items], next_cursor, viewer)
 
 
-async def timeline(
-    db: AsyncSession, cursor: str | None, limit: int
-) -> tuple[list[Post], str | None]:
-    return await _page(db, cursor, limit)
-
-
-async def user_posts(
-    db: AsyncSession, user: User, cursor: str | None, limit: int
-) -> tuple[list[Post], str | None]:
-    return await _page(db, cursor, limit, user)
+async def user_feed(
+    db: AsyncSession,
+    user: User,
+    viewer: User | None,
+    cursor: str | None,
+    limit: int,
+) -> FeedPage:
+    own = select(
+        Post.created_at.label("at"),
+        literal("p").label("kind"),
+        Post.id.label("post_id"),
+    ).where(Post.author_id == user.id)
+    reposted = select(Repost.created_at, literal("r"), Repost.post_id).where(
+        Repost.user_id == user.id
+    )
+    merged = union_all(own, reposted).subquery()
+    query = select(merged.c.at, merged.c.kind, merged.c.post_id).order_by(
+        merged.c.at.desc(), merged.c.kind.desc(), merged.c.post_id.desc()
+    )
+    if cursor is not None:
+        at, kind, key = _decode_feed_cursor(cursor)
+        query = query.where(
+            or_(
+                merged.c.at < at,
+                and_(
+                    merged.c.at == at,
+                    or_(
+                        merged.c.kind < kind,
+                        and_(merged.c.kind == kind, merged.c.post_id < key),
+                    ),
+                ),
+            )
+        )
+    rows = (await db.execute(query.limit(limit + 1))).all()
+    page = rows[:limit]
+    loaded = await posts_by_id(db, [row.post_id for row in page])
+    next_cursor = encode_cursor(*page[-1]) if len(rows) > limit else None
+    return await feed_page(
+        db,
+        [
+            (loaded[row.post_id], user if row.kind == "r" else None)
+            for row in page
+            if row.post_id in loaded
+        ],
+        next_cursor,
+        viewer,
+    )

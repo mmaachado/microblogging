@@ -2,12 +2,14 @@ from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
+    Boolean,
     DateTime,
     ForeignKey,
     Index,
     SmallInteger,
     String,
     TypeDecorator,
+    false,
 )
 from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -54,6 +56,12 @@ class Post(Base):
     )
     body: Mapped[str] = mapped_column(
         String(120), default="", server_default=""
+    )
+    quote_of_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("posts.id", ondelete="SET NULL"), index=True
+    )
+    is_quote: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=false()
     )
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     edited_at: Mapped[datetime | None] = mapped_column(UTCDateTime)

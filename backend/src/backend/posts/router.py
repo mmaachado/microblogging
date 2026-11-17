@@ -13,13 +13,12 @@ from fastapi import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.auth.deps import current_user, get_app_settings
+from backend.auth.deps import current_user, get_app_settings, optional_user
 from backend.auth.models import User
 from backend.config import Settings
 from backend.db import get_db
 from backend.posts import service
-from backend.posts.models import Post
-from backend.posts.schemas import PostEditIn, PostOut, PostPage
+from backend.posts.schemas import FeedPage, PostEditIn, PostOut
 from backend.users import service as users_service
 
 router = APIRouter(prefix="/api/v1", tags=["posts"])
@@ -40,17 +39,11 @@ def get_post_quota(request: Request) -> service.PostQuota:
 Db = Annotated[AsyncSession, Depends(get_db)]
 AppSettings = Annotated[Settings, Depends(get_app_settings)]
 CurrentUser = Annotated[User, Depends(current_user)]
+Viewer = Annotated[User | None, Depends(optional_user)]
 Limiters = Annotated[service.Limiters, Depends(get_limiters)]
 Quota = Annotated[service.PostQuota, Depends(get_post_quota)]
 Cursor = Annotated[str | None, Query()]
 Limit = Annotated[int, Query(ge=1, le=50)]
-
-
-def _page(items: list[Post], next_cursor: str | None) -> PostPage:
-    return PostPage(
-        items=[PostOut.model_validate(p) for p in items],
-        next_cursor=next_cursor,
-    )
 
 
 @router.post("/posts", status_code=201)
@@ -61,6 +54,7 @@ async def create_post(
     limiters: Limiters,
     quota: Quota,
     body: Annotated[str, Form()] = "",
+    quote_of_id: Annotated[str | None, Form()] = None,
     files: Annotated[list[UploadFile] | None, File()] = None,
 ) -> PostOut:
     reservation = quota.reserve_post(str(user.id))
@@ -70,17 +64,18 @@ async def create_post(
                 reservation, sum(u.stat().st_size for u in uploads)
             )
             post = await service.create_post(
-                db, user, body, uploads, settings, limiters
+                db, user, body, uploads, settings, limiters, quote_of_id
             )
     except BaseException:
         quota.release(reservation)
         raise
-    return PostOut.model_validate(post)
+    return (await service.serialize(db, [post], user))[0]
 
 
 @router.get("/posts/{post_id}")
-async def get_post(post_id: str, db: Db) -> PostOut:
-    return PostOut.model_validate(await service.get_post(db, post_id))
+async def get_post(post_id: str, db: Db, viewer: Viewer) -> PostOut:
+    post = await service.get_post(db, post_id)
+    return (await service.serialize(db, [post], viewer))[0]
 
 
 @router.patch("/posts/{post_id}")
@@ -88,7 +83,7 @@ async def edit_post(
     post_id: str, data: PostEditIn, db: Db, user: CurrentUser
 ) -> PostOut:
     post = await service.edit_post(db, user, post_id, data.body)
-    return PostOut.model_validate(post)
+    return (await service.serialize(db, [post], user))[0]
 
 
 @router.delete("/posts/{post_id}", status_code=204)
@@ -101,16 +96,20 @@ async def delete_post(
 
 @router.get("/timeline")
 async def get_timeline(
-    db: Db, cursor: Cursor = None, limit: Limit = 20
-) -> PostPage:
-    return _page(*await service.timeline(db, cursor, limit))
+    db: Db, viewer: Viewer, cursor: Cursor = None, limit: Limit = 20
+) -> FeedPage:
+    return await service.timeline(db, viewer, cursor, limit)
 
 
 @router.get("/users/{username}/posts")
 async def get_user_posts(
-    username: str, db: Db, cursor: Cursor = None, limit: Limit = 20
-) -> PostPage:
+    username: str,
+    db: Db,
+    viewer: Viewer,
+    cursor: Cursor = None,
+    limit: Limit = 20,
+) -> FeedPage:
     user = await users_service.get_by_username(db, username)
     if user is None:
         raise HTTPException(404, "user_not_found")
-    return _page(*await service.user_posts(db, user, cursor, limit))
+    return await service.user_feed(db, user, viewer, cursor, limit)
