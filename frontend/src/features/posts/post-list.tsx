@@ -6,12 +6,14 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { errorMessage } from "@/features/auth/use-auth";
 import { PostCard } from "./post-card";
-import type { PostPage } from "./types";
+import type { FeedPage } from "./types";
 
 export function PostList({
   query,
+  emptyText,
 }: {
-  query: UseInfiniteQueryResult<InfiniteData<PostPage>>;
+  query: UseInfiniteQueryResult<InfiniteData<FeedPage>>;
+  emptyText?: string;
 }) {
   const { t } = useTranslation();
   if (query.isPending) return <p className="p-4">{t("posts.loading")}</p>;
@@ -25,18 +27,22 @@ export function PostList({
       </div>
     );
   }
-  const posts = query.data.pages.flatMap((page) => page.items);
-  if (posts.length === 0) {
+  const entries = query.data.pages.flatMap((page) => page.items);
+  if (entries.length === 0) {
     return (
       <p className="text-muted-foreground p-8 text-center">
-        {t("posts.empty")}
+        {emptyText ?? t("posts.empty")}
       </p>
     );
   }
   return (
     <div>
-      {posts.map((post) => (
-        <PostCard key={post.id} post={post} />
+      {entries.map((entry) => (
+        <PostCard
+          key={`${entry.post.id}:${entry.reposted_by?.username ?? ""}`}
+          post={entry.post}
+          repostedBy={entry.reposted_by}
+        />
       ))}
       {query.hasNextPage && (
         <div className="flex justify-center p-4">

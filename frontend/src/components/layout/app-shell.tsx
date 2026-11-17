@@ -1,4 +1,4 @@
-import { Home, Languages, LogOut, Monitor, Moon, Settings, Sun, User } from "lucide-react";
+import { Bookmark, Home, Languages, LogOut, Monitor, Moon, Settings, Sun, User } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { NavLink, Outlet } from "react-router";
 import { Button } from "@/components/ui/button";
@@ -94,6 +94,10 @@ export function AppShell({ me }: { me: Me }) {
             <NavLink to={`/${me.username}`} className={linkClass}>
               <User className="size-5" />
               {t("nav.profile")}
+            </NavLink>
+            <NavLink to="/bookmarks" className={linkClass}>
+              <Bookmark className="size-5" />
+              {t("nav.bookmarks")}
             </NavLink>
             <NavLink to="/settings" className={linkClass}>
               <Settings className="size-5" />

@@ -33,3 +33,10 @@ async def current_user(
     if user is None:
         raise HTTPException(401, "not_authenticated")
     return user
+
+
+async def optional_user(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    session: Annotated[str | None, Cookie()] = None,
+) -> User | None:
+    return await resolve_session(db, session) if session else None

@@ -11,7 +11,22 @@ from PIL import Image
 
 from backend.config import Settings
 
-POST_KEYS = {"id", "author", "body", "media", "created_at", "edited_at"}
+POST_KEYS = {
+    "id",
+    "author",
+    "body",
+    "media",
+    "created_at",
+    "edited_at",
+    "like_count",
+    "repost_count",
+    "quote_count",
+    "liked",
+    "reposted",
+    "bookmarked",
+    "quote",
+    "quote_unavailable",
+}
 AUTHOR_KEYS = {"username", "display_name", "bio", "avatar_url"}
 
 
@@ -280,7 +295,7 @@ async def test_timeline_order_and_pagination(
         assert response.status_code == 200
         page = response.json()
         assert set(page) == {"items", "next_cursor"}
-        seen.extend(item["id"] for item in page["items"])
+        seen.extend(item["post"]["id"] for item in page["items"])
         pages += 1
         cursor = page["next_cursor"]
         if cursor is None:
@@ -332,7 +347,7 @@ async def test_user_posts_only_that_user(
     response = await authed.get(f"/api/v1/users/{username}/posts")
     assert response.status_code == 200
     page = response.json()
-    assert [item["id"] for item in page["items"]] == [mine["id"]]
+    assert [item["post"]["id"] for item in page["items"]] == [mine["id"]]
     assert page["next_cursor"] is None
 
 
@@ -348,4 +363,6 @@ async def test_timeline_is_public(
     created = (await make_post(authed)).json()
     response = await anonymous.get("/api/v1/timeline")
     assert response.status_code == 200
-    assert [item["id"] for item in response.json()["items"]] == [created["id"]]
+    assert [item["post"]["id"] for item in response.json()["items"]] == [
+        created["id"]
+    ]

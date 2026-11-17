@@ -14,7 +14,8 @@
     "profile": "Profile",
     "settings": "Settings",
     "logout": "Log out",
-    "primary": "Main navigation"
+    "primary": "Main navigation",
+    "bookmarks": "Saved"
   },
   "theme": {
     "label": "Theme",
@@ -119,6 +120,25 @@
     "loadingMore": "Loading...",
     "notFound": "This post doesn't exist",
     "loading": "Loading posts...",
-    "mediaVideo": "Post video"
+    "mediaVideo": "Post video",
+    "like": "Like",
+    "share": "Share",
+    "bookmark": "Save post",
+    "repost": "Repost",
+    "undoRepost": "Undo repost",
+    "quote": "Quote",
+    "copyLink": "Copy link",
+    "linkCopied": "Link copied",
+    "linkFailed": "Could not copy the link",
+    "repostedBy": "@{{username}} reposted",
+    "quoteUnavailable": "Post unavailable",
+    "quotingQuote": "Quoting another post",
+    "quoteTitle": "Quote post",
+    "quotePlaceholder": "Add a comment",
+    "actionFailed": "Couldn't complete that action."
+  },
+  "bookmarks": {
+    "title": "Saved",
+    "empty": "You haven't saved anything yet"
   }
 }

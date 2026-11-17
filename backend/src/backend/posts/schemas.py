@@ -19,6 +19,18 @@ class MediaOut(BaseModel):
         return f"/media/{self.path}"
 
 
+class QuotedPostOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    author: PublicProfileOut
+    body: str
+    media: list[MediaOut]
+    created_at: datetime
+    edited_at: datetime | None
+    is_quote: bool
+
+
 class PostOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -28,12 +40,25 @@ class PostOut(BaseModel):
     media: list[MediaOut]
     created_at: datetime
     edited_at: datetime | None
+    like_count: int
+    repost_count: int
+    quote_count: int
+    liked: bool
+    reposted: bool
+    bookmarked: bool
+    quote: QuotedPostOut | None
+    quote_unavailable: bool
 
 
 class PostEditIn(BaseModel):
     body: str
 
 
-class PostPage(BaseModel):
-    items: list[PostOut]
+class FeedEntry(BaseModel):
+    post: PostOut
+    reposted_by: PublicProfileOut | None
+
+
+class FeedPage(BaseModel):
+    items: list[FeedEntry]
     next_cursor: str | None

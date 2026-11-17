@@ -14,7 +14,8 @@
     "profile": "Perfil",
     "settings": "Configurações",
     "logout": "Sair",
-    "primary": "Navegação principal"
+    "primary": "Navegação principal",
+    "bookmarks": "Salvos"
   },
   "theme": {
     "label": "Tema",
@@ -119,6 +120,25 @@
     "loadingMore": "Carregando...",
     "notFound": "Este post não existe",
     "loading": "Carregando posts...",
-    "mediaVideo": "Vídeo do post"
+    "mediaVideo": "Vídeo do post",
+    "like": "Curtir",
+    "share": "Compartilhar",
+    "bookmark": "Salvar post",
+    "repost": "Repostar",
+    "undoRepost": "Desfazer repost",
+    "quote": "Citar",
+    "copyLink": "Copiar link",
+    "linkCopied": "Link copiado",
+    "linkFailed": "Não foi possível copiar o link",
+    "repostedBy": "@{{username}} repostou",
+    "quoteUnavailable": "Post indisponível",
+    "quotingQuote": "Citando outro post",
+    "quoteTitle": "Citar post",
+    "quotePlaceholder": "Adicione um comentário",
+    "actionFailed": "Não foi possível concluir a ação."
+  },
+  "bookmarks": {
+    "title": "Salvos",
+    "empty": "Você ainda não salvou nada"
   }
 }

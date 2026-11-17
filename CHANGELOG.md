@@ -8,6 +8,15 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Likes, reposts, quotes and bookmarks. Like, repost and quote counts
+  are public, but the API never lists who liked or reposted a post.
+  Bookmarks have no count and only their owner sees them, on a private
+  Saved page at `/bookmarks`. Reposts show on the reposter's profile as
+  "@x reposted" and stay out of the global timeline. A quote can have an
+  empty body. When the quoted post is deleted, the quote stays up and
+  shows "Post unavailable". The share menu also copies a post's link
+  without contacting the server. The timeline, profile and bookmark
+  lists now return `{items: [{post, reposted_by}], next_cursor}`.
 - Posts of up to 120 characters with up to 4 images or 1 video, a global
   reverse-chronological timeline with cursor pagination, post pages,
   editing (marked as edited) and deletion, which also removes the files.

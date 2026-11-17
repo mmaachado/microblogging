@@ -7,6 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { errorMessage } from "@/features/auth/use-auth";
 import { BodyCounter } from "./body-counter";
 import { MAX_BODY, bodyLength } from "./body";
+import { QuotedEmbed } from "./quoted-post";
+import type { Post } from "./types";
 import { useCreatePost } from "./use-posts";
 
 const MAX_FILES = 4;
@@ -37,7 +39,13 @@ function checkFiles(files: File[]): string | null {
   return tooBig ? "file_too_large" : null;
 }
 
-export function Composer() {
+export function Composer({
+  quoteOf,
+  onPosted,
+}: {
+  quoteOf?: Post;
+  onPosted?: () => void;
+}) {
   const { t } = useTranslation();
   const create = useCreatePost();
   const input = useRef<HTMLInputElement>(null);
@@ -77,20 +85,25 @@ export function Composer() {
   }
 
   const over = bodyLength(body) > MAX_BODY;
-  const empty = body.trim() === "" && attachments.length === 0;
+  const empty = body.trim() === "" && attachments.length === 0 && !quoteOf;
   const disabled = create.isPending || over || empty;
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
     if (disabled) return;
     create.mutate(
-      { body, files: attachments.map((a) => a.file) },
+      {
+        body,
+        files: attachments.map((a) => a.file),
+        quoteOf: quoteOf?.id,
+      },
       {
         onSuccess: () => {
           attachments.forEach((a) => revoke(a.url));
           setAttachments([]);
           setBody("");
           setFileError(null);
+          onPosted?.();
         },
       },
     );
@@ -101,8 +114,8 @@ export function Composer() {
       <Textarea
         value={body}
         onChange={(event) => setBody(event.target.value)}
-        placeholder={t("posts.placeholder")}
-        aria-label={t("posts.placeholder")}
+        placeholder={t(quoteOf ? "posts.quotePlaceholder" : "posts.placeholder")}
+        aria-label={t(quoteOf ? "posts.quotePlaceholder" : "posts.placeholder")}
         aria-invalid={over}
       />
       {attachments.length > 0 && (
@@ -136,6 +149,14 @@ export function Composer() {
             </li>
           ))}
         </ul>
+      )}
+      {quoteOf && (
+        <QuotedEmbed
+          quote={{
+            ...quoteOf,
+            is_quote: quoteOf.quote !== null || quoteOf.quote_unavailable,
+          }}
+        />
       )}
       {(fileError || create.isError) && (
         <Alert variant="destructive">

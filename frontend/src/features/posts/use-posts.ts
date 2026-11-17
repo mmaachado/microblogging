@@ -6,12 +6,14 @@ import {
   type InfiniteData,
   type QueryClient,
 } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { useMe } from "@/features/auth/use-auth";
 import { apiFetch } from "@/lib/api";
-import type { Post, PostPage as Page } from "./types";
+import type { FeedEntry, FeedPage as Page, Post } from "./types";
 
 const PAGE_SIZE = 20;
-const LIST_KEYS = [["timeline"], ["user-posts"]] as const;
+const LIST_KEYS = [["timeline"], ["user-posts"], ["bookmarks"]] as const;
 
 type Pages = InfiniteData<Page, string | null>;
 
@@ -53,9 +55,13 @@ export function usePost(id: string) {
   });
 }
 
+export function useBookmarks() {
+  return useInfiniteQuery(pagedQuery(["bookmarks"], "/api/v1/me/bookmarks"));
+}
+
 function mapCachedPages(
   client: QueryClient,
-  update: (items: Post[]) => Post[],
+  update: (items: FeedEntry[]) => FeedEntry[],
 ) {
   for (const queryKey of LIST_KEYS) {
     client.setQueriesData<Pages>({ queryKey }, (data) =>
@@ -76,14 +82,18 @@ export function useCreatePost() {
   const client = useQueryClient();
   const { data: me } = useMe();
   return useMutation({
-    mutationFn: (input: { body: string; files: File[] }) => {
+    mutationFn: (input: { body: string; files: File[]; quoteOf?: string }) => {
       const body = new FormData();
       body.append("body", input.body);
+      if (input.quoteOf) body.append("quote_of_id", input.quoteOf);
       for (const file of input.files) body.append("files", file);
       return apiFetch<Post>("/api/v1/posts", { method: "POST", body });
     },
-    onSuccess: () => {
+    onSuccess: (_, input) => {
       void client.invalidateQueries({ queryKey: ["timeline"] });
+      if (input.quoteOf) {
+        void client.invalidateQueries({ queryKey: ["post", input.quoteOf] });
+      }
       if (me) {
         void client.invalidateQueries({
           queryKey: ["user-posts", me.username],
@@ -104,7 +114,9 @@ export function useEditPost() {
     onSuccess: (post) => {
       client.setQueryData(["post", post.id], post);
       mapCachedPages(client, (items) =>
-        items.map((item) => (item.id === post.id ? post : item)),
+        items.map((item) =>
+          item.post.id === post.id ? { ...item, post } : item,
+        ),
       );
     },
   });
@@ -118,8 +130,100 @@ export function useDeletePost() {
         method: "DELETE",
       }),
     onSuccess: (_, id) => {
-      mapCachedPages(client, (items) => items.filter((item) => item.id !== id));
+      const orphan = (post: Post): Post =>
+        post.quote?.id === id
+          ? { ...post, quote: null, quote_unavailable: true }
+          : post;
+      mapCachedPages(client, (items) =>
+        items
+          .filter((item) => item.post.id !== id)
+          .map((item) => ({ ...item, post: orphan(item.post) })),
+      );
       client.removeQueries({ queryKey: ["post", id] });
+      client.setQueriesData<Post>({ queryKey: ["post"] }, (post) =>
+        post ? orphan(post) : post,
+      );
     },
   });
 }
+
+type Interaction = "like" | "repost" | "bookmark";
+
+const STATE = {
+  like: { flag: "liked", count: "like_count" },
+  repost: { flag: "reposted", count: "repost_count" },
+  bookmark: { flag: "bookmarked", count: null },
+} as const;
+
+function toggled(post: Post, kind: Interaction, on: boolean): Post {
+  const { flag, count } = STATE[kind];
+  if (post[flag] === on) return post;
+  const next = { ...post, [flag]: on };
+  if (count) next[count] = Math.max(0, post[count] + (on ? 1 : -1));
+  return next;
+}
+
+function useInteraction(kind: Interaction, id: string) {
+  const client = useQueryClient();
+  const { t } = useTranslation();
+
+  function replace(update: (post: Post) => Post) {
+    mapCachedPages(client, (items) =>
+      items.map((item) =>
+        item.post.id === id ? { ...item, post: update(item.post) } : item,
+      ),
+    );
+    client.setQueryData<Post>(["post", id], (post) =>
+      post ? update(post) : post,
+    );
+  }
+
+  return useMutation({
+    mutationFn: (input: { on: boolean }) =>
+      apiFetch<Post>(`/api/v1/posts/${encodeURIComponent(id)}/${kind}`, {
+        method: input.on ? "PUT" : "DELETE",
+      }),
+    onMutate: async ({ on }) => {
+      await Promise.all(
+        [["post", id], ...LIST_KEYS].map((queryKey) =>
+          client.cancelQueries({ queryKey }),
+        ),
+      );
+      replace((post) => toggled(post, kind, on));
+      if (kind === "bookmark" && !on) {
+        client.setQueriesData<Pages>({ queryKey: ["bookmarks"] }, (data) =>
+          data
+            ? {
+                ...data,
+                pages: data.pages.map((page) => ({
+                  ...page,
+                  items: page.items.filter((item) => item.post.id !== id),
+                })),
+              }
+            : data,
+        );
+      }
+    },
+    onError: (_, { on }) => {
+      replace((post) => toggled(post, kind, !on));
+      void client.invalidateQueries({ queryKey: ["post", id] });
+      if (kind === "bookmark") {
+        void client.invalidateQueries({ queryKey: ["bookmarks"] });
+      }
+      toast.error(t("posts.actionFailed"));
+    },
+    onSuccess: (post, { on }) => {
+      replace(() => post);
+      if (kind === "bookmark" && on) {
+        void client.invalidateQueries({ queryKey: ["bookmarks"] });
+      }
+      if (kind === "repost") {
+        void client.invalidateQueries({ queryKey: ["user-posts"] });
+      }
+    },
+  });
+}
+
+export const useLike = (id: string) => useInteraction("like", id);
+export const useRepost = (id: string) => useInteraction("repost", id);
+export const useBookmark = (id: string) => useInteraction("bookmark", id);

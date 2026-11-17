@@ -81,6 +81,18 @@ async def test_requests_leave_no_identifying_trace(
         headers=headers,
     )
     assert post.status_code == 201
+    post_id = post.json()["id"]
+    for action in ("like", "repost", "bookmark"):
+        reacted = await client.put(
+            f"/api/v1/posts/{post_id}/{action}", headers=headers
+        )
+        assert reacted.status_code == 200
+    quoted = await client.post(
+        "/api/v1/posts",
+        data={"body": "", "quote_of_id": post_id},
+        headers=headers,
+    )
+    assert quoted.status_code == 201
     rejected = await client.post(
         "/api/v1/posts",
         data={"body": post_body},

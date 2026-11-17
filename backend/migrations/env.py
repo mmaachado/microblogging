@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from backend.auth import models  # noqa: F401
 from backend.config import get_settings
 from backend.db import Base
+from backend.interactions import models as interaction_models  # noqa: F401
 from backend.posts import models as post_models  # noqa: F401
 
 target_metadata = Base.metadata

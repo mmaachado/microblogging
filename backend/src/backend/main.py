@@ -22,6 +22,7 @@ from backend.auth.router import router as auth_router
 from backend.auth.service import RegistrationLimiter
 from backend.config import Settings, get_settings
 from backend.db import create_engine
+from backend.interactions.router import router as interactions_router
 from backend.logging import configure_logging
 from backend.posts.router import router as posts_router
 from backend.posts.service import MAX_VIDEO_BYTES, PostError, PostQuota
@@ -177,6 +178,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(auth_router)
     app.include_router(users_router)
     app.include_router(posts_router)
+    app.include_router(interactions_router)
 
     @app.exception_handler(PostError)
     async def post_error(_: Request, exc: PostError) -> Response:
