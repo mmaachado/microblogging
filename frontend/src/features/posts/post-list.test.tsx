@@ -2,7 +2,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test/render";
-import { ME, json, makePost } from "./fixtures";
+import { ME, json, makeEntry, makePost } from "./fixtures";
 import { PostList } from "./post-list";
 import { useTimeline } from "./use-posts";
 
@@ -16,12 +16,12 @@ describe("PostList", () => {
       if (path === "/api/v1/auth/me") return json(ME);
       if (path.includes("cursor=c1")) {
         return json({
-          items: [makePost({ id: "p2", body: "second" })],
+          items: [makeEntry(makePost({ id: "p2", body: "second" }))],
           next_cursor: null,
         });
       }
       return json({
-        items: [makePost({ id: "p1", body: "first" })],
+        items: [makeEntry(makePost({ id: "p1", body: "first" }))],
         next_cursor: "c1",
       });
     });

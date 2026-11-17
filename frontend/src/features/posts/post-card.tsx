@@ -1,4 +1,11 @@
-import { MoreHorizontal } from "lucide-react";
+import {
+  Bookmark,
+  Heart,
+  MoreHorizontal,
+  Repeat2,
+  Share,
+} from "lucide-react";
+import { toast } from "sonner";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
@@ -23,11 +30,20 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { errorMessage, useMe } from "@/features/auth/use-auth";
 import { ProfileAvatar } from "@/features/profile/profile-avatar";
+import type { PublicProfile } from "@/features/profile/use-profile";
 import { cn } from "@/lib/utils";
 import { MAX_BODY, bodyLength } from "./body";
 import { BodyCounter } from "./body-counter";
+import { QuoteDialog } from "./quote-dialog";
+import { QuotedEmbed, QuoteUnavailable } from "./quoted-post";
 import type { Post, PostMedia } from "./types";
-import { useDeletePost, useEditPost } from "./use-posts";
+import {
+  useBookmark,
+  useDeletePost,
+  useEditPost,
+  useLike,
+  useRepost,
+} from "./use-posts";
 
 const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
   ["year", 31536000],
@@ -92,7 +108,11 @@ function EditForm({ post, onDone }: { post: Post; onDone: () => void }) {
   const edit = useEditPost();
   const [body, setBody] = useState(post.body);
   const over = bodyLength(body) > MAX_BODY;
-  const empty = body.trim() === "" && post.media.length === 0;
+  const empty =
+    body.trim() === "" &&
+    post.media.length === 0 &&
+    !post.quote &&
+    !post.quote_unavailable;
   return (
     <form
       className="flex flex-col gap-2"
@@ -171,11 +191,89 @@ function DeleteDialog({
   );
 }
 
+function ActionBar({ post }: { post: Post }) {
+  const { t } = useTranslation();
+  const like = useLike(post.id);
+  const repost = useRepost(post.id);
+  const bookmark = useBookmark(post.id);
+  const [quoting, setQuoting] = useState(false);
+
+  function copyLink() {
+    Promise.resolve()
+      .then(() =>
+        navigator.clipboard.writeText(`${location.origin}/post/${post.id}`),
+      )
+      .then(
+        () => toast.success(t("posts.linkCopied")),
+        () => toast.error(t("posts.linkFailed")),
+      );
+  }
+
+  return (
+    <div className="-ml-2 flex items-center gap-4">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label={t("posts.share")}
+            aria-pressed={post.reposted}
+            className={cn(post.reposted && "text-green-600")}
+          >
+            <Repeat2 />
+            {post.repost_count > 0 && post.repost_count}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start">
+          <DropdownMenuItem
+            disabled={repost.isPending}
+            onSelect={() => repost.mutate({ on: !post.reposted })}
+          >
+            {t(post.reposted ? "posts.undoRepost" : "posts.repost")}
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setQuoting(true)}>
+            {t("posts.quote")}
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={copyLink}>
+            <Share />
+            {t("posts.copyLink")}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <Button
+        variant="ghost"
+        size="sm"
+        aria-label={t("posts.like")}
+        aria-pressed={post.liked}
+        className={cn(post.liked && "text-red-600")}
+        disabled={like.isPending}
+        onClick={() => like.mutate({ on: !post.liked })}
+      >
+        <Heart className={cn(post.liked && "fill-current")} />
+        {post.like_count > 0 && post.like_count}
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        aria-label={t("posts.bookmark")}
+        aria-pressed={post.bookmarked}
+        disabled={bookmark.isPending}
+        onClick={() => bookmark.mutate({ on: !post.bookmarked })}
+      >
+        <Bookmark className={cn(post.bookmarked && "fill-current")} />
+      </Button>
+      <QuoteDialog post={post} open={quoting} onOpenChange={setQuoting} />
+    </div>
+  );
+}
+
 export function PostCard({
   post,
+  repostedBy,
   onDeleted,
 }: {
   post: Post;
+  repostedBy?: PublicProfile | null;
   onDeleted?: () => void;
 }) {
   const { t, i18n } = useTranslation();
@@ -187,71 +285,85 @@ export function PostCard({
   const isAuthor = me?.username === author.username;
 
   return (
-    <article className="flex gap-3 border-b p-4">
-      <Link to={profile} className="shrink-0">
-        <ProfileAvatar
-          avatarUrl={author.avatar_url}
-          name={author.display_name || author.username}
-          className="size-10"
-        />
-      </Link>
-      <div className="flex min-w-0 flex-1 flex-col gap-2">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
-            {author.display_name && (
-              <Link to={profile} className="font-bold hover:underline">
-                {author.display_name}
+    <article className="flex flex-col gap-2 border-b p-4">
+      {repostedBy && (
+        <p className="text-muted-foreground flex items-center gap-2 text-sm">
+          <Repeat2 className="size-4" />
+          {t("posts.repostedBy", { username: repostedBy.username })}
+        </p>
+      )}
+      <div className="flex gap-3">
+        <Link to={profile} className="shrink-0">
+          <ProfileAvatar
+            avatarUrl={author.avatar_url}
+            name={author.display_name || author.username}
+            className="size-10"
+          />
+        </Link>
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+              {author.display_name && (
+                <Link to={profile} className="font-bold hover:underline">
+                  {author.display_name}
+                </Link>
+              )}
+              <Link to={profile} className="text-muted-foreground">
+                @{author.username}
               </Link>
-            )}
-            <Link to={profile} className="text-muted-foreground">
-              @{author.username}
-            </Link>
-            <Link
-              to={`/post/${post.id}`}
-              title={new Date(post.created_at).toLocaleString(i18n.language)}
-              className="text-muted-foreground text-sm hover:underline"
-            >
-              {relativeTime(post.created_at, i18n.language)}
-            </Link>
-            {post.edited_at && (
-              <span className="text-muted-foreground text-sm">
-                {t("posts.edited")}
-              </span>
+              <Link
+                to={`/post/${post.id}`}
+                title={new Date(post.created_at).toLocaleString(i18n.language)}
+                className="text-muted-foreground text-sm hover:underline"
+              >
+                {relativeTime(post.created_at, i18n.language)}
+              </Link>
+              {post.edited_at && (
+                <span className="text-muted-foreground text-sm">
+                  {t("posts.edited")}
+                </span>
+              )}
+            </div>
+            {isAuthor && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={t("posts.options")}
+                  >
+                    <MoreHorizontal />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => setEditing(true)}>
+                    {t("posts.edit")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onSelect={() => setConfirming(true)}
+                  >
+                    {t("posts.delete")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
-          {isAuthor && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={t("posts.options")}
-                >
-                  <MoreHorizontal />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={() => setEditing(true)}>
-                  {t("posts.edit")}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  variant="destructive"
-                  onSelect={() => setConfirming(true)}
-                >
-                  {t("posts.delete")}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          {editing ? (
+            <EditForm post={post} onDone={() => setEditing(false)} />
+          ) : (
+            post.body && (
+              <p className="break-words whitespace-pre-wrap">{post.body}</p>
+            )
           )}
+          <MediaGrid media={post.media} />
+          {post.quote ? (
+            <QuotedEmbed quote={post.quote} />
+          ) : (
+            post.quote_unavailable && <QuoteUnavailable />
+          )}
+          <ActionBar post={post} />
         </div>
-        {editing ? (
-          <EditForm post={post} onDone={() => setEditing(false)} />
-        ) : (
-          post.body && (
-            <p className="break-words whitespace-pre-wrap">{post.body}</p>
-          )
-        )}
-        <MediaGrid media={post.media} />
       </div>
       {isAuthor && (
         <DeleteDialog
